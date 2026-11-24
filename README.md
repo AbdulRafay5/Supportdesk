@@ -29,3 +29,6 @@ Database integration is implemented but has not yet been runtime verified.
 
 ## Authentication
 POST /api/auth/register and POST /api/auth/login accept email and password. Registration creates employees only. Send the login token as Authorization: Bearer TOKEN for ticket requests. Employees see their own tickets; agents and admins see all tickets; only admins delete tickets. Set Bootstrap__Email and Bootstrap__Password through local environment variables before the first development startup to create an admin. Admins can assign Employee or Agent via PUT /api/users/{id}/role. Existing tokens expire after 30 minutes; role changes are not immediately reflected in issued tokens. Never commit secrets. Authentication has not been runtime tested.
+
+## Frontend
+With Node.js 22.12+ and the API running on port 5080, run `cd frontend`, `npm install`, then `npm run dev`. Open the URL printed by Vite. The development proxy forwards API calls to the backend. Tokens are held in memory and refreshing signs the user out. Production hosting and frontend verification are pending.
