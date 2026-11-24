@@ -39,6 +39,21 @@ function Auth({ login }: { login: (session: Session) => void }) {
 
 function Workspace({ session, logout }: { session: Session; logout: () => void }) {
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [sort, setSort] = useState('newest');
+  const counts = {
+    Open: tickets.filter(ticket => ticket.status === 'Open').length,
+    InProgress: tickets.filter(ticket => ticket.status === 'InProgress').length,
+    Resolved: tickets.filter(ticket => ticket.status === 'Resolved').length
+  };
+  const query = search.trim().toLowerCase();
+  const visibleTickets = tickets.filter(ticket =>
+    (statusFilter === 'All' || ticket.status === statusFilter) &&
+    (ticket.title.toLowerCase().includes(query) || ticket.description.toLowerCase().includes(query))
+  ).sort((a, b) => sort === 'oldest'
+    ? Date.parse(a.createdAt) - Date.parse(b.createdAt)
+    : Date.parse(b.createdAt) - Date.parse(a.createdAt));
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [editing, setEditing] = useState<Ticket | null>(null);
@@ -72,6 +87,23 @@ function Workspace({ session, logout }: { session: Session; logout: () => void }
   return <><header><strong>SupportDesk</strong><span>{session.roles.join(', ')}</span><button className="secondary" onClick={logout}>Sign out</button></header>
     <main className="workspace"><h1>Support tickets</h1><p>Report issues and track their progress.</p>
     <p role="status">{message}</p>
+    <section className="overview" aria-label="Ticket overview" aria-busy={loading}>
+      {[
+        { label: 'Total tickets', count: tickets.length, filter: 'All' },
+        { label: 'Open', count: counts.Open, filter: 'Open' },
+        { label: 'In progress', count: counts.InProgress, filter: 'InProgress' },
+        { label: 'Resolved', count: counts.Resolved, filter: 'Resolved' }
+      ].map(item => <button type="button" className="metric" key={item.filter}
+        aria-pressed={statusFilter === item.filter} onClick={() => setStatusFilter(item.filter)}>
+        <span>{item.label}</span><strong>{loading ? '—' : item.count}</strong>
+      </button>)}
+    </section>
+    <section className="panel breakdown"><h2>Ticket resolution</h2>
+      <p>{loading ? 'Loading statistics...' : tickets.length ? Math.round(counts.Resolved / tickets.length * 100) + '% of accessible tickets resolved' : 'No ticket data yet'}</p>
+      <div className="progress-track" role="progressbar" aria-label="Resolved tickets" aria-valuemin={0} aria-valuemax={100} aria-valuenow={tickets.length ? Math.round(counts.Resolved / tickets.length * 100) : 0}>
+        <div style={{ width: (tickets.length ? counts.Resolved / tickets.length * 100 : 0) + '%' }} />
+      </div>
+    </section>
     <form className="panel" onSubmit={save}><h2>{editing ? 'Edit ticket' : 'Report an issue'}</h2>
       <label>Title<input required maxLength={120} value={title} onChange={e => setTitle(e.target.value)} /></label>
       <label>Description<textarea required maxLength={4000} value={description} onChange={e => setDescription(e.target.value)} /></label>
@@ -79,8 +111,17 @@ function Workspace({ session, logout }: { session: Session; logout: () => void }
       <button disabled={busy}>{editing ? 'Save changes' : 'Create ticket'}</button>
       {editing && <button type="button" className="secondary" onClick={() => { setEditing(null); setTitle(''); setDescription(''); }}>Cancel</button>}
     </form>
-    <section className="tickets"><h2>Tickets</h2>{loading ? <p>Loading tickets...</p> : tickets.length === 0 ? <p>No tickets found.</p> : tickets.map(ticket => <article className="panel" key={ticket.id}>
-      <div className="ticket-heading"><h3>{ticket.title}</h3><span className="status">{ticket.status}</span></div>
+    <section className="tickets"><h2>Tickets</h2>
+      <div className="filters">
+        <label>Search tickets<input type="search" placeholder="Search title or description" value={search} onChange={e => setSearch(e.target.value)} /></label>
+        <label>Status<select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+          <option value="All">All statuses</option><option value="Open">Open</option><option value="InProgress">In progress</option><option value="Resolved">Resolved</option>
+        </select></label>
+        <label>Sort by<select value={sort} onChange={e => setSort(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
+      </div>
+      {!loading && <p className="result-count" aria-live="polite">Showing {visibleTickets.length} of {tickets.length} tickets</p>}
+      {loading ? <p>Loading tickets...</p> : visibleTickets.length === 0 ? <p>{tickets.length ? 'No tickets match your filters.' : 'No tickets found.'}</p> : visibleTickets.map(ticket => <article className="panel" key={ticket.id}>
+      <div className="ticket-heading"><h3>{ticket.title}</h3><span className={"status status-" + ticket.status}>{ticket.status === "InProgress" ? "In progress" : ticket.status}</span></div>
       <p className="description">{ticket.description}</p><small>{new Date(ticket.createdAt).toLocaleString()}</small>
       <div className="actions"><button disabled={busy} className="secondary" onClick={() => { setEditing(ticket); setTitle(ticket.title); setDescription(ticket.description); }}>Edit</button>
       {session.roles.includes('Admin') && <button disabled={busy} className="secondary" onClick={() => void remove(ticket.id)}>Delete</button>}</div>

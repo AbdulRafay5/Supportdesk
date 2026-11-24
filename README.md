@@ -32,3 +32,5 @@ POST /api/auth/register and POST /api/auth/login accept email and password. Regi
 
 ## Frontend
 With Node.js 22.12+ and the API running on port 5080, run `cd frontend`, `npm install`, then `npm run dev`. Open the URL printed by Vite. The development proxy forwards API calls to the backend. Tokens are held in memory and refreshing signs the user out. Production hosting and frontend verification are pending.
+
+The dashboard shows totals and resolution percentage for tickets accessible to the signed-in user. Search, status filtering and date sorting run locally on the fetched ticket list. Server-side pagination is not implemented yet.
